@@ -7,7 +7,6 @@ if __name__ == '__main__':
     names, audio, transcripts = get_librispeech_data('../data/LibriSpeech/dev-clean')
 
     print('Done loading')
-    print(names[0], audio[0], transcripts[0])
 
     # Group and reshape audio
     # 10 seconds of audio
@@ -19,8 +18,4 @@ if __name__ == '__main__':
 
     model(inputs)
 
-    # Probably not possible to compile like this?
-    # model.compile(optimizer=Adam(1e-5),
-    #               loss=None,
-    #               metrics=[])
     model.compile(optimizer=Adam(1e-5))
