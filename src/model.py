@@ -29,8 +29,8 @@ class Wav2VecPretraining(tf.keras.Model):
             num_transformer_embedding_blocks=16,
             transformer_embedding_kernel_size=16, # 128
             
-            transformer_ffn_size=512, # 3072
-            num_transformer_blocks=3, # 12
+            transformer_ffn_size=3072,
+            num_transformer_blocks=12,
             num_attention_heads=8,
 
             mask_proportion=0.065,

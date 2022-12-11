@@ -59,7 +59,7 @@ class ConvolutionEmbedding(tf.keras.layers.Layer):
         self.activation = tf.keras.layers.Activation(tf.keras.activations.relu)
     def call(self, x):
         x = self.conv(x)
-        # x = self.layer_norm(x)
+        x = self.layer_norm(x) # TODO
         x = self.activation(x)
         return x
 
@@ -93,7 +93,9 @@ class SpeechTransformer(tf.keras.Model):
             embedding_kernel_size,
             hidden_size, ffn_size,
             num_blocks=1,
-            num_heads=1, **kwargs):
+            num_heads=1,
+            dropout_rate = 0.1,
+            **kwargs):
         super().__init__(**kwargs)
 
         self.num_blocks = num_blocks # TODO
@@ -123,8 +125,6 @@ class SpeechTransformer(tf.keras.Model):
 
         encoder_num_heads = num_heads
         decoder_num_heads = num_heads
-
-        dropout_rate = 0.1
 
 
         self.encoder_embeddings = [
@@ -165,16 +165,14 @@ class SpeechTransformer(tf.keras.Model):
 
 
     def call(self, audio_in, audio_pred):
-        # TODO: Need to embed inputs with positions
-        
+        # Perform self-attention on audio_in
         x = audio_in
         for emb in self.encoder_embeddings:
             x = emb(x)
         for enc in self.encoders:
             x = enc(x, x)
         encoder_output = x
-        # TODO: I have forgotten everything about transformers
-
+        
         # Embed decoder inputs
         x = audio_pred
         for emb in self.decoder_embeddings:

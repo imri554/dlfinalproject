@@ -2,12 +2,6 @@ import tensorflow as tf
 
 from gumbelsoftmax import gumbel_softmax, hard_gumbel_softmax
 
-# So product quantization is supposed to select a discrete codebook in such a
-# way that the backprop is differentiable. Problem is, we can't differentiate
-# the discrete index chosen.
-# PyTorch provides a gumbel-softmax that can differentiate the index.
-# Maybe we could imitate a differentiable quantization with a Dense layer?
-
 
 class ProductQuantization(tf.keras.layers.Layer):
     def __init__(self, num_groups, **kwargs):
@@ -16,7 +10,6 @@ class ProductQuantization(tf.keras.layers.Layer):
         # V is feature_space_depth // G
         # d = feature_space_depth
         # codebook_entry_size = d / G
-        # out_size = 
         # TODO: consider using num_codebooks or codebook_size
         self.num_groups = num_groups
     

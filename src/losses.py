@@ -13,7 +13,7 @@ def contrastive_loss(y_true, y_pred, mask):
     tf.ensure_shape(y_pred, tf.shape(y_true))
 
     num_mask = tf.cast(mask, y_pred.dtype)
-    num_masked_steps = tf.reduce_sum(1 - num_mask, axis=-1)
+    num_masked_steps = tf.reduce_sum(1 - num_mask, axis=-1, keepdims=True)
     num_distractors = num_masked_steps - 1
 
     # Normalize so that we can compute cosine similarity using the dot product
@@ -32,9 +32,7 @@ def contrastive_loss(y_true, y_pred, mask):
     # Mask columns
     similarity += -1e7 * tf.expand_dims(num_mask, -2)
 
-    # TODO: take mean over batch
-    # TODO: Use log-softmax
-    loss = -tf.nn.log_softmax(similarity / num_distractors)
+    loss = -tf.nn.log_softmax(similarity / tf.expand_dims(num_distractors, -1))
     # Select the correct element
     loss = tf.linalg.diag_part(loss) # (batch_size, num_audio_features)
     loss *= (1 - num_mask)
@@ -42,32 +40,25 @@ def contrastive_loss(y_true, y_pred, mask):
 
     return tf.math.reduce_mean(loss)
 
-class ContrastiveLoss(tf.keras.losses.Loss):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-    def call(self, y_true, y_pred):
-        """
-        True dimensions: (batch_num, quantization_size)
-        Predicted dimensions: (batch_num, quantization_size, alphabet_size)
-        """
-        # Calculate similarities between y_true and y_pred
-
-        # Apply softmax
-        # Apply -log
-
 def diversity_loss(y_pred):
     # calculate probabilities using a softmax
     y_probs = tf.nn.softmax(y_pred)
 
-    out = tf.math.reduce_sum(-y_probs * tf.math.log(y_probs), axis=-1)
+    out = tf.math.reduce_sum(y_probs * tf.math.log(y_probs), axis=-1)
     out = out / tf.cast(tf.shape(y_pred)[-1], out.dtype)
 
     out = tf.math.reduce_sum(out, axis=-1)
     return tf.math.reduce_mean(out)
 
-class DiversityLoss(tf.keras.losses.Loss):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
 
+class FlattenedSparseCategoricalCrossentropy(tf.losses.Loss):
+    def __init__(self, from_logits=False, **kwargs):
+        super().__init__(**kwargs)
+        self.scce = tf.keras.losses.SparseCategoricalCrossentropy(
+            from_logits=from_logits)
     def call(self, y_true, y_pred):
-        return diversity_loss(y_pred)
+        y_true = tf.reshape(y_true, (-1,))
+        y_pred = tf.reshape(y_pred, (-1, tf.shape(y_pred)[-1]))
+        return self.scce(y_true, y_pred)
+
+        

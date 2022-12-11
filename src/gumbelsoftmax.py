@@ -11,8 +11,17 @@ def gumbel_softmax(logits, temperature):
 
 # https://pytorch.org/docs/stable/generated/torch.nn.functional.gumbel_softmax.html
 def hard_probs(soft):
-    max_prob = tf.math.reduce_max(soft, axis=-1, keepdims=True)
-    hard = tf.cast(soft == max_prob, tf.dtypes.float32)
+    original_shape = tf.shape(soft)
+    num_categories = original_shape[-1]
+    flattened_shape = [-1, num_categories]
+
+    # Take samples from soft probabilities
+    logits = soft / (1 - soft)
+    samples = tf.random.categorical(tf.reshape(logits, flattened_shape), 1)
+    # Create hard probabilities
+    hard = tf.one_hot(samples, num_categories)
+    hard = tf.reshape(hard, original_shape)
+    hard = tf.cast(hard, tf.dtypes.float32)
     return hard - tf.stop_gradient(soft) + soft
 
 def hard_gumbel_softmax(logits, temperature):
