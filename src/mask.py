@@ -4,34 +4,35 @@ def shift_mask(mask, distance):
     """
     Input shape: (batch_size, audio_window_size)
     """
-    mask = mask[:, :-distance]
-    shifted = tf.pad(mask, [[0, 0], [distance, 0]], mode='CONSTANT', constant_values=True)
-    return mask
+    if (distance == 0):
+        return mask
+    out = mask[:, :-distance]
+    out = tf.pad(out, [[0, 0], [distance, 0]], mode='CONSTANT', constant_values=True)
+    return out
  
-def generate_starting_indices(input_shape, proportion):
+def generate_start_mask(input_shape, proportion):
+    """False values represent masked values"""
     rand_vals = tf.random.uniform(input_shape)
-    start_val = rand_vals < self.num_timesteps
+    start_val = rand_vals >= proportion
 
     return start_val
 
 def create_mask(input_shape, proportion, num_timesteps):
-    start_val = generate_starting_indices
+    start_mask = generate_start_mask(input_shape, proportion)
     ## Mask M consecutive time steps
-    cumulative_mask = tf.ones(tf.shape(tf.inputs))
-    for i in range(M):
-        cumulative_mask *= shift_mask(mask, i)
+    cumulative_mask = tf.fill(input_shape, True)
+    for i in range(num_timesteps):
+        cumulative_mask &= shift_mask(start_mask, i)
     return cumulative_mask
 
-def mask_audio(self, inputs, proportion, num_timesteps, default_val):
-    """To mask the latent speech representations output by the encoder, we
-    randomly sample without replacement a certain proportion p of all time
-    steps to be starting indices and then mask the subsequent M consecutive
-    time steps from every sampled index; spans may overlap."""
-
-    mask = create_mask(tf.shape(inputs, proportion, num_timesteps))
-    inputs = inputs * mask + default_val * (1 - mask)
-
-    # Notes: try not to sample a time that comes after the audio clip
+def mask_audio(inputs, mask, default_val):
+    """
+    Mask is (batch_size, audio_window_size).
+    Inputs is (batch_size, audio_window_size, n_channels)
+    """
+    mask = tf.cast(mask, inputs.dtype)
+    mask = tf.expand_dims(mask, -1)
+    inputs = inputs * (mask) + default_val * (1 - mask)
     return inputs
 
 
@@ -51,14 +52,14 @@ class Mask(tf.keras.layers.Layer):
             shape=flattened_input_shape)
     
 
-    def call(inputs, training=True):
-        if (training):
-            # Mask a portion of the audio
-            return mask_audio(
-                inputs,
-                self.proportion,
-                self.num_timesteps,
-                self.mask_default)
-        else:
-            # Don't perform any masking
-            return inputs
+    def call(self, inputs):
+        """
+        Input shape: (batch_size, num_audio_features, num_channels)
+        """
+        # Mask a portion of the audio
+        mask = create_mask(tf.shape(inputs)[:-1], self.proportion, self.num_timesteps)
+
+        return mask, mask_audio(
+            inputs,
+            mask,
+            self.mask_default)
